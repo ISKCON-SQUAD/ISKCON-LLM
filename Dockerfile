@@ -2,8 +2,8 @@ FROM python:3.10
 
 WORKDIR /app
 
-COPY requirements.txt .
-COPY .env .
+# copies .env if it exists (weird workaround)
+COPY requirements.txt .en[v] ./
 COPY *.py .
 COPY src src
 COPY chroma_vector_db chroma_vector_db
