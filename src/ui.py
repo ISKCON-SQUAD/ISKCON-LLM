@@ -6,18 +6,19 @@ import os
 def init_api_keys():
     # Load environment variables
     load_dotenv()
-
-    # Set the OpenAI API key
-    openai_api_key = os.getenv("OPEN_API_KEY")
-    if not openai_api_key:
-        st.error("API key is not set. Please set the OPENAI_API_KEY environment variable.")
-        st.stop()
-
-    # LangSmith Tracking
-    os.environ["LANGCHAIN_TRACING_V2"] = "true"
-    os.environ['LANGCHAIN_API_KEY'] = os.getenv("LANGCHAIN_API_KEY")
-
-    return openai_api_key
+    KEYS_EXPECTED = [
+        "OPEN_API_KEY",
+        "LANGCHAIN_TRACING_V2",
+        "LANGCHAIN_ENDPOINT",
+        "LANGCHAIN_API_KEY",
+        "LANGCHAIN_PROJECT"
+    ]
+    for key in KEYS_EXPECTED:
+        if key not in os.environ:
+            st.error(f"Environment variable '{key}' is not set.")
+            st.stop()
+    # Return the OpenAI API key
+    return os.getenv("OPEN_API_KEY")
 
 # Create a Streamlit callback handler
 class StreamlitCallbackHandler(BaseCallbackHandler):
