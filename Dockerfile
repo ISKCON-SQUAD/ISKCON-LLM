@@ -4,7 +4,7 @@ WORKDIR /app
 
 # copies .env if it exists (weird workaround)
 COPY requirements.txt .en[v] ./
-COPY *.py .
+COPY *.py ./
 COPY src src
 COPY chroma_vector_db chroma_vector_db
 COPY book book
