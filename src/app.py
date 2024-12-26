@@ -1,54 +1,40 @@
 from langgraph.graph import StateGraph, END
+from langchain_core.prompts import ChatPromptTemplate
 from typing import TypedDict, Annotated
 
-from src.templates import detailed_template, concise_template
+from src.templates import prabhupad_system_prompt
 
 class State(TypedDict):
+    # Messages are of type (role: str, content: str)
     messages: Annotated[list, "The messages in the conversation"]
     context: Annotated[str, "Retrieved context"]
-    question: Annotated[str, "User question"]
-
-def classify_question(question: str) -> str:
-    # Basic keyword-based classification
-    detailed_keywords = ["explain", "how", "why", "describe"]
-    if any(kw in question.lower() for kw in detailed_keywords):
-        return "detailed"
-    return "concise"
 
 def format_docs(docs):
     return "\n\n".join(f"Chapter {doc.metadata.get('chapter', 'N/A')}, Verse {doc.metadata.get('verse', 'N/A')}: {doc.page_content}" for doc in docs)
 
 def app(retriever, llm):
+    # Define the prompt
+    prompt = ChatPromptTemplate([
+        ("system", "{system_prompt}"),
+        ("system", "Optional Context: {context}"),
+        ("placeholder", "{conversation}"),
+    ])
+    chain = prompt | llm
     # Define the nodes
     def retrieve_context(state: State) -> State:
-        question = state["messages"][-1]["content"]
+        question = state["messages"][-1][1]
         docs = retriever.get_relevant_documents(question)
         new_context = format_docs(docs)
         combined_context = f"{state.get('context', '')}\n\n{new_context}".strip()
-        return {
-            "messages": state["messages"],
-            "context": combined_context,
-            "question": question
-        }
+        return State(messages=state["messages"], context=combined_context)
     def generate_response(state: State) -> State:
-        question = state["question"]
-        question_type = classify_question(question)
-        # Choose the template dynamically
-        template = concise_template if question_type == "concise" else detailed_template
-        chat_history = "\n".join([f"{m['role']}: {m['content']}" for m in state["messages"][:-1]])
-        response = llm.invoke(
-            template.format(
-                context=state["context"],
-                chat_history=chat_history,
-                question=question
-            )
-        )
-        updated_messages = state["messages"] + [{"role": "assistant", "content": response.content}]
-        return {
-            "messages": updated_messages,
+        response = chain.invoke({
+            "system_prompt": prabhupad_system_prompt,
             "context": state["context"],
-            "question": question
-        }
+            "conversation": state["messages"],
+        })
+        new_messages = state["messages"] + [("assistant", response.content)]
+        return State(messages=new_messages, context=state["context"])
     # Set up the graph
     graph = StateGraph(State)
     graph.add_node("retriever", retrieve_context)

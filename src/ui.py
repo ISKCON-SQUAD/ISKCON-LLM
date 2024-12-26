@@ -3,6 +3,8 @@ from langchain.callbacks.base import BaseCallbackHandler
 from dotenv import load_dotenv
 import os
 
+from src.app import State
+
 def init_api_keys():
     # Load environment variables
     load_dotenv()
@@ -38,11 +40,7 @@ def start_ui(app):
         # Button to start a new conversation
         if st.button("New Conversation"):
             st.session_state.conversation_id = len(st.session_state.get("conversations", []))
-            st.session_state.state = {
-                "messages": [],
-                "context": "",
-                "question": ""
-            }
+            st.session_state.state = State(messages=[], context="")
             st.rerun()
 
         # Display existing conversations
@@ -60,21 +58,17 @@ def start_ui(app):
         st.session_state.conversation_id = 0
 
     if "state" not in st.session_state:
-        st.session_state.state = {
-            "messages": [],
-            "context": "",
-            "question": ""
-        }
+        st.session_state.state = State(messages=[], context="")
 
     # Display current conversation
     st.title(f"Bhagavad Gita RAG Chatbot - Conversation {st.session_state.conversation_id + 1}")
 
     for message in st.session_state.state["messages"]:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+        with st.chat_message(message[0]):
+            st.markdown(message[1])
 
     if prompt := st.chat_input("Ask your question about the Bhagavad Gita:"):
-        st.session_state.state["messages"].append({"role": "user", "content": prompt})
+        st.session_state.state["messages"].append(("user", prompt))
         with st.chat_message("user"):
             st.markdown(prompt)
 
